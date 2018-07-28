@@ -66,6 +66,17 @@ describe('Lottery Contract',()=>{
             assert(err);
         }
     });
+    it('Only manager can call PickWinnwer',async()=>{
+        try{
+                await   lottery.methods.pickwinner({
+                    from : account[1],
+                });
+                assert(false);
+            }
+        catch(err){
+            assert(err);
+        }
+    })
 });
 
 
