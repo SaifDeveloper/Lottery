@@ -8,17 +8,19 @@ const {interface,bytecode} = require('../compile');
 let lottery;
 let accounts;
 
-beforeEach(async () => {
+beforeEach(async ()=> {
     accounts = await web3.eth.getAccounts();
 
     lottery = await new web3.eth.Contract(JSON.parse(interface))
-    .deploy({data:bytecode})
-    .send({from:accounts[0],gas:'1000000'})
+        .deploy({data:bytecode})
+        .send({from:accounts[0],gas:1000000});
 });
 
 describe('Lottery Contract',()=>{
-    it('Deploys a Contract',()=>{
+    
+    it('deploys a contract',()=>{
         assert.ok(lottery.options.address);
+        // console.log("Lottery:",lottery);
     });
 
     it('Allows one account to enter',async()=>{
@@ -33,7 +35,8 @@ describe('Lottery Contract',()=>{
         assert.equal(1,players.length);
 
     });
-    it('Allows multiple account to enter',async()=>{
+
+    it('Allows multiple accounts to enter',async()=>{
         await lottery.methods.enter().send({
             from: accounts[0],
             value: web3.utils.toWei('0.02','ether')
@@ -54,31 +57,84 @@ describe('Lottery Contract',()=>{
         assert.equal(accounts[2],players[2]);
         assert.equal(3,players.length);
     });
-    it('Requires minimum amount of ether to enter',async()=>{
+
+
+    it('requires minimum amount of ether to enter', async()=>{
         try{
-                await lottery.methods.enter().send({
-                    from: accounts[0],
-                    value: 200
-                });
-                assert(false);
-            }
-        catch(err){
-            assert(err);
-        }
-    });
-    it('Only manager can call PickWinnwer',async()=>{
-        try{
-                await   lottery.methods.pickwinner({
-                    from : account[1],
-                });
-                assert(false);
-            }
-        catch(err){
+            await lottery.methods.enter().send({
+                from: accounts[0],
+                value: 200
+            });
+            assert(false);
+        }catch(err){
             assert(err);
         }
     })
-});
+
+    it('only manager can call pickwinner', async()=>{
+        try{
+            await lottery.methods.enter().send({
+                from: accounts[1],
+            });
+            assert(false);
+        }catch(err){
+            assert(err);
+        }
+    })
+
+    it('runs end to end test',async()=>{
+
+        await lottery.methods.enter().send({
+            from: accounts[0],
+            value: web3.utils.toWei('2','ether')
+        })
+
+        const initial_balance = await web3.eth.getBalance(accounts[0]);   
+
+        await lottery.methods.pickwinner().send({
+            from: accounts[0]
+        })
+
+        const final_balance = await web3.eth.getBalance(accounts[0]);
+
+        const difference = final_balance - initial_balance;
+        console.log(difference);
+        assert(difference > web3.utils.toWei('1.8','ether'));
+    })
+
+    it('checks there are no players after pick winner',async()=>{
+
+        await lottery.methods.enter().send({
+            from: accounts[0],
+            value: web3.utils.toWei('2','ether')
+        })
+
+        await lottery.methods.pickwinner().send({
+            from: accounts[0]
+        })
+
+        const players = await lottery.methods.getPlayers().call();
+        console.log(players.length);
+        assert(players.length == 0);
+
+    })
+
+    it('checks the lottery balance is empty after pick winner is called',async()=>{
+
+        await lottery.methods.enter().send({
+            from: accounts[0],
+            value: web3.utils.toWei('2','ether')
+        })
+
+        await lottery.methods.pickwinner().send({
+            from: accounts[0]
+        })
+
+        const balance = await web3.eth.getBalance(lottery.options.address);
+        console.log(balance);
+        assert(balance==0)
+
+    })
 
 
-
-
+})
